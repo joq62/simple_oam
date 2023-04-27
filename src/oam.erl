@@ -19,8 +19,14 @@
 
 %% API
 -export([
+	 load_wanted_state_from_file/1,
+	 load_wanted_state_from_list/1,
+	 get_wanted_state/0,
+	 is_wanted_state_loaded/0,
+
 	 deploy_w_file/1,
 	 deploy_w_list/1,
+	 
 	 deploy_status/0
 
 	]).
@@ -63,6 +69,20 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+%%--------------------------------------------------------------------
+%% @doc
+%% @spec
+%% @end
+%%--------------------------------------------------------------------
+load_wanted_state_from_file(FullPathFile)->
+    gen_server:call(?SERVER, {load_wanted_state_from_file,FullPathFile},infinity).
+load_wanted_state_from_list(List)->
+    gen_server:call(?SERVER, {load_wanted_state_from_list,List},infinity).
+get_wanted_state()->
+    gen_server:call(?SERVER, {get_wanted_state},infinity).
+is_wanted_state_loaded()->
+    gen_server:call(?SERVER, {is_wanted_state_loaded},infinity).
+
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -161,6 +181,23 @@ init([]) ->
        
     
     {ok, #state{deployment_info=undefined}}.
+%%--------------------------------------------------------------------
+%% @doc
+%% @spec
+%% @end
+%%--------------------------------------------------------------------
+handle_call({deploy_w_file,FullPathFile}, _From, State) ->
+    Reply=case oam_lib:deploy_w_file(FullPathFile) of
+	      {ok,DeploymentInfo}->
+		  NewState=State#state{deployment_info=DeploymentInfo},
+		  ok;
+	      {error,Reason}->
+		  NewState=State,
+		  {error,Reason}
+	  end,
+    {reply, Reply, NewState};
+
+
 
 %%--------------------------------------------------------------------
 %% @doc
