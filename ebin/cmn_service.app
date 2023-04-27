@@ -1,0 +1,11 @@
+{application,cmn_service,
+             [{description,"An OTP library"},
+              {vsn,"0.1.0"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {env,[]},
+              {modules,[cmn_appl,common,copy,dfs,dist_lib,list_duplicates,
+                        list_length,local_vm,mapreduce,my_ssh,node_to_id,
+                        qsort,service,ssh_vm,vm]},
+              {licenses,["Apache-2.0"]},
+              {links,[]}]}.

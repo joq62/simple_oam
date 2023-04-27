@@ -1,0 +1,10 @@
+{application,dbetcd_service,
+             [{description,"An OTP library"},
+              {vsn,"0.1.0"},
+              {registered,[]},
+              {applications,[kernel,stdlib]},
+              {env,[]},
+              {modules,[common,db_config,db_host_spec,db_lock,
+                        db_provider_spec,dbetcd,dbetcd_server,lib_db]},
+              {licenses,["Apache-2.0"]},
+              {links,[]}]}.

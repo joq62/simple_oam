@@ -1,0 +1,10 @@
+{application,simple_oam,
+             [{description,"An OTP application"},
+              {vsn,"0.1.0"},
+              {registered,[]},
+              {mod,{simple_oam_app,[]}},
+              {applications,[kernel,stdlib]},
+              {env,[]},
+              {modules,[oam,simple_oam_app,simple_oam_sup]},
+              {licenses,["Apache-2.0"]},
+              {links,[]}]}.
