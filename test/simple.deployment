@@ -1,0 +1,6 @@
+% {ProiverSpec,HostSpec}
+{"adder","c200"}.
+{"divi","c200"}.
+{"divi","c201"}.
+{"test_appl","c200"}.
+{"test_appl","c201"}.
