@@ -21,12 +21,11 @@
 -export([
 	 load_wanted_state_from_file/1,
 	 load_wanted_state_from_list/1,
-	 get_wanted_state/0,
 	 is_wanted_state_loaded/0,
 
 	 deploy_w_file/1,
 	 deploy_w_list/1,
-	 
+	 wanted_state/0,
 	 deploy_status/0
 
 	]).
@@ -94,6 +93,8 @@ deploy_w_file(FullPathFile)->
 deploy_w_list(List)->
     gen_server:call(?SERVER, {deploy_w_list,List},infinity).
 
+wanted_state()->
+    gen_server:call(?SERVER, {wanted_state},infinity).
 deploy_status()->
     gen_server:call(?SERVER, {deploy_status},infinity).
 
@@ -181,23 +182,6 @@ init([]) ->
        
     
     {ok, #state{deployment_info=undefined}}.
-%%--------------------------------------------------------------------
-%% @doc
-%% @spec
-%% @end
-%%--------------------------------------------------------------------
-handle_call({deploy_w_file,FullPathFile}, _From, State) ->
-    Reply=case oam_lib:deploy_w_file(FullPathFile) of
-	      {ok,DeploymentInfo}->
-		  NewState=State#state{deployment_info=DeploymentInfo},
-		  ok;
-	      {error,Reason}->
-		  NewState=State,
-		  {error,Reason}
-	  end,
-    {reply, Reply, NewState};
-
-
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -225,6 +209,17 @@ handle_call({deploy_w_list,List}, _From, State) ->
 		  {error,Reason}
 	  end,
     {reply, Reply, NewState};
+
+
+handle_call({wanted_state}, _From, State) ->
+    Reply=case State#state.deployment_info of
+	      undefined->
+		  {error,["No deployment info exists ",?MODULE,?LINE]};
+	      DeploymentInfo->
+		  {ok,DeploymentInfo}
+	  end,
+    {reply, Reply, State};
+
 
 handle_call({deploy_status}, _From, State) ->
     Reply=case State#state.deployment_info of

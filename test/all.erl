@@ -17,7 +17,7 @@
 %% --------------------------------------------------------------------
 -define(DbEtcdNode,'dbetcd@c50').
 -define(TestHosts,["c200","c201"]).
-
+-define(File,"test/simple.deployment").
 %% --------------------------------------------------------------------
 %% Function: available_hosts()
 %% Description: Based on hosts.config file checks which hosts are avaible
@@ -31,8 +31,8 @@ start()->
 
     ok=load_start_provider("adder","c200"),    
     ok=stop_unload_provider("adder","c200"),  
-              
-
+            
+    ok=simple_deployment_file(),
 
     [ok,ok]=[oam:stop_controller(HostSpec)||HostSpec<-?TestHosts],
     [false,false]=[oam:is_controller_started(HostSpec)||HostSpec<-?TestHosts],
@@ -42,6 +42,33 @@ start()->
   %  init:stop(),
     ok.
 
+
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @spec
+%% @end
+%%--------------------------------------------------------------------
+simple_deployment_file()->
+    io:format("Start ~p~n",[{?MODULE,?FUNCTION_NAME}]),
+
+    {error,["No deployment info exists ",oam,_]}=oam:wanted_state(),   
+    {error,["couldnt read file ","glurk",enoent,oam_lib,_]}=oam:deploy_w_file("glurk"),
+    {error,["No deployment info exists ",oam,_]}=oam:wanted_state(),   
+    ok=oam:deploy_w_file(?File),
+    {ok,[{"adder","c200"},
+	 {"divi","c200"},
+	 {"divi","c201"},
+	 {"test_appl","c200"},
+	 {"test_appl","c201"}
+	]}=oam:wanted_state(),  
+    ['adder@c200']=lists:sort(sd:get_node(adder)),
+    ['divi@c200','divi@c201']=lists:sort(sd:get_node(divi)),
+    ['test_appl@c200','test_appl@c201']=lists:sort(sd:get_node(test_appl)),
+
+    42=sd:call(adder,adder,add,[20,22],5000),
+    
+    ok.
 %%--------------------------------------------------------------------
 %% @doc
 %% @spec
@@ -119,9 +146,7 @@ stop_start_controllers()->
     [ok,ok]=[oam:start_controller(HostSpec)||HostSpec<-?TestHosts],
     [true,true]=[oam:is_controller_started(HostSpec)||HostSpec<-?TestHosts],
 
-    %kuk=sd:call(dbetcd_appl,db_host_spec,get_all_id,[],5000),
-    
-    
+      
 
     ok.
 %% --------------------------------------------------------------------

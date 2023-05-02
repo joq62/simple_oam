@@ -5,6 +5,6 @@
               {mod,{simple_oam_app,[]}},
               {applications,[kernel,stdlib]},
               {env,[]},
-              {modules,[oam,simple_oam_app,simple_oam_sup]},
+              {modules,[oam,oam_lib,simple_oam_app,simple_oam_sup]},
               {licenses,["Apache-2.0"]},
               {links,[]}]}.
