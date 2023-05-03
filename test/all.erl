@@ -17,7 +17,7 @@
 %% --------------------------------------------------------------------
 -define(DbEtcdNode,'dbetcd@c50').
 -define(TestHosts,["c200","c201"]).
--define(File,"test/simple.deployment").
+-define(File,"test/production.deployment").
 %% --------------------------------------------------------------------
 %% Function: available_hosts()
 %% Description: Based on hosts.config file checks which hosts are avaible
@@ -37,7 +37,14 @@ start()->
     
    {
     [{ok,"c200"},{ok,"c201"}],
-    [{ok,"test_appl","c201"},{ok,"test_appl","c200"},{ok,"divi","c201"},{ok,"divi","c200"},{ok,"adder","c200"}]
+    [{ok,"test_appl","c201"},
+     {ok,"test_appl","c200"},
+     {ok,"divi","c201"},
+     {ok,"divi","c200"},
+     {ok,"dbetcd_appl","c201"},
+     {ok,"dbetcd_appl","c200"},
+     {ok,"adder","c200"}
+    ]
    }=orch(),
 
     ok=test_controller_kill(),
@@ -86,7 +93,7 @@ test_controller_kill()->
     ok=oam:stop_controller("c200"),
     {
      [{ok,"c200"}],
-     [{ok,"test_appl","c200"},{ok,"divi","c200"},{ok,"adder","c200"}]
+     [{ok,"test_appl","c200"},{ok,"divi","c200"},{ok,"dbetcd_appl","c200"},{ok,"adder","c200"}]
     }=orch(),
 
    %%
@@ -94,8 +101,7 @@ test_controller_kill()->
     ok=oam:stop_controller("c201"),
     {
      [{ok,"c201"}],
-     [{ok,"test_appl","c201"},
-      {ok,"divi","c201"}]
+     [{ok,"test_appl","c201"},{ok,"divi","c201"},{ok,"dbetcd_appl","c201"}]
     }=orch(),
     
 
@@ -110,8 +116,11 @@ test_controller_kill()->
 orch()->
     io:format("Start ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
     
+    {ok,WantedState}=kube:wanted_state_from_file(?File),
+    ["c200","c201"]=WantedHostSpecs=list_rm_duplicates(WantedState),
+   
     %% check and try to start missing controllers
-    WantedState_Controllers=?TestHosts,
+    WantedState_Controllers=WantedHostSpecs,
     MissingControlles=[HostSpec||HostSpec<-WantedState_Controllers,
 				 false==kube:is_controller_started(HostSpec)],
     StartControllers=[{kube:start_controller(HostSpec),HostSpec}||HostSpec<-MissingControlles],
@@ -119,10 +128,29 @@ orch()->
 
     %% check and try to start missing providers
     io:format("check and try to start missing providers ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
-    {ok,WantedState}=kube:wanted_state_from_file(?File),
+   
     StartMissingProviders=start_missing(lists:sort(WantedState),[]),
  %  io:format("StartMissingProviders ~p~n",[{StartMissingProviders,?MODULE,?FUNCTION_NAME,?LINE}]),
     {StartControllers,StartMissingProviders}.
+    
+%%--------------------------------------------------------------------
+%% @doc
+%% @spec
+%% @end
+%%--------------------------------------------------------------------
+
+list_rm_duplicates(L)->
+    list_rm_duplicates(L,[]).
+list_rm_duplicates([],Acc)->
+    Acc;
+list_rm_duplicates([{_,HostSpec,_}|T],Acc)->
+    NewAcc=case lists:member(HostSpec,Acc) of
+	       true->
+		   Acc;
+	       false ->
+		   [HostSpec|Acc]
+	   end,
+    list_rm_duplicates(T,NewAcc).
     
 %%--------------------------------------------------------------------
 %% @doc
@@ -168,6 +196,7 @@ start_missing([],Acc)->
 start_missing([{ProviderSpec,HostSpec,_App}|T],Acc)->
     Loaded=kube:is_provider_loaded(ProviderSpec,HostSpec),
     Started=kube:is_provider_started(ProviderSpec,HostSpec),
+    io:format("ProviderSpec,HostSpec, Loaded,Started, ~p~n",[{ProviderSpec,HostSpec,Loaded,Started,?MODULE,?FUNCTION_NAME,?LINE}]),
     NewAcc=case {Loaded,Started} of
 	       {false,_}->
 		   case kube:load_provider(ProviderSpec,HostSpec) of

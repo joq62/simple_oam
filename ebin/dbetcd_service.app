@@ -4,7 +4,7 @@
               {registered,[]},
               {applications,[kernel,stdlib]},
               {env,[]},
-              {modules,[common,db_config,db_host_spec,db_lock,
-                        db_provider_spec,dbetcd,dbetcd_server,lib_db]},
+              {modules,[common,db_config,db_deployment_spec,db_host_spec,
+                        db_lock,db_provider_spec,dbetcd,dbetcd_server,lib_db]},
               {licenses,["Apache-2.0"]},
               {links,[]}]}.
