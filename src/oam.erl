@@ -19,6 +19,11 @@
 
 %% API
 -export([
+
+	 create_deployment_from_file/1,
+	 delete_deployment_from_file/1,
+	 wanted_state_from_file/1,
+
 	 load_wanted_state_from_file/1,
 	 load_wanted_state_from_list/1,
 	 is_wanted_state_loaded/0,
@@ -68,6 +73,19 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+%%--------------------------------------------------------------------
+%% @doc
+%% @spec
+%% @end
+%%--------------------------------------------------------------------
+create_deployment_from_file(FullPathFile)->
+    gen_server:call(?SERVER,{create_deployment_from_file,FullPathFile},infinity).
+delete_deployment_from_file(FullPathFile)->
+    gen_server:call(?SERVER,{delete_deployment_from_file,FullPathFile},infinity).
+wanted_state_from_file(FullPathFile)->
+    gen_server:call(?SERVER,{wanted_state_from_file,FullPathFile},infinity).
+
+
 %%--------------------------------------------------------------------
 %% @doc
 %% @spec
@@ -179,8 +197,7 @@ stop()-> gen_server:call(?SERVER, {stop},infinity).
 init([]) ->
    
     ?LOG_NOTICE("Server started ",[]),
-       
-    
+
     {ok, #state{deployment_info=undefined}}.
 
 %%--------------------------------------------------------------------
@@ -188,6 +205,20 @@ init([]) ->
 %% @spec
 %% @end
 %%--------------------------------------------------------------------
+handle_call({create_deployment_from_file,FullPathFile}, _From, State) ->
+    io:format("Dbg ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE,FullPathFile}]),
+    Reply=oam_lib:create_deployment_from_file(FullPathFile),
+    {reply, Reply, State};
+
+handle_call({delete_deployment_from_file,FullPathFile}, _From, State) ->
+    Reply=oam_lib:delete_deployment_from_file(FullPathFile),
+    {reply, Reply, State};
+
+handle_call({wanted_state_from_file,FullPathFile}, _From, State) ->
+    Reply=oam_lib:wanted_state_from_file(FullPathFile),
+    {reply, Reply, State};
+
+
 handle_call({deploy_w_file,FullPathFile}, _From, State) ->
     Reply=case oam_lib:deploy_w_file(FullPathFile) of
 	      {ok,DeploymentInfo}->
