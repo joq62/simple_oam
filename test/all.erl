@@ -35,13 +35,15 @@ start()->
             
  %   ok=sim_orch(),
     
-    {
-     [{ok,"c200"},{ok,"c201"}],
-     [{ok,"adder","c200"},{ok,"divi","c200"},{ok,"divi","c201"},{ok,"test_appl","c200"},{ok,"test_appl","c201"}]
-    }=orch(),
+   {
+    [{ok,"c200"},{ok,"c201"}],
+    [{ok,"test_appl","c201"},{ok,"test_appl","c200"},{ok,"divi","c201"},{ok,"divi","c200"},{ok,"adder","c200"}]
+   }=orch(),
 
-    %%
     ok=test_controller_kill(),
+    ok=test_provider_kill(),
+    
+    {[],[]}=orch(),
 
   %  ok=simple_deployment_file_3(),
     % ok=simple_deployment_file(),
@@ -59,6 +61,24 @@ start()->
 %% @spec
 %% @end
 %%--------------------------------------------------------------------
+test_provider_kill()->
+    io:format("Start ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    
+    io:format("Stop  ~p~n",[{"divi","c200","test_appl","c201",?MODULE,?FUNCTION_NAME,?LINE}]),
+    ok=kube:stop_provider("divi","c200"),
+    ok=kube:unload_provider("divi","c200"),
+    ok=kube:stop_provider("test_appl","c201"),
+    {
+     [],
+     [{ok,"test_appl","c201"},{ok,"divi","c200"}]
+    }=orch(),
+    ok.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% @spec
+%% @end
+%%--------------------------------------------------------------------
 test_controller_kill()->
     io:format("Start ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
     
@@ -66,18 +86,16 @@ test_controller_kill()->
     ok=oam:stop_controller("c200"),
     {
      [{ok,"c200"}],
-     [{ok,"adder","c200"},{ok,"divi","c200"},ok,{ok,"test_appl","c200"},ok]
+     [{ok,"test_appl","c200"},{ok,"divi","c200"},{ok,"adder","c200"}]
     }=orch(),
 
    %%
-    io:format("Stop c200 ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
+    io:format("Stop c201 ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
     ok=oam:stop_controller("c201"),
     {
      [{ok,"c201"}],
-     [ok,ok,
-      {ok,"divi","c201"},
-      ok,
-      {ok,"test_appl","c201"}]
+     [{ok,"test_appl","c201"},
+      {ok,"divi","c201"}]
     }=orch(),
     
 
@@ -97,13 +115,13 @@ orch()->
     MissingControlles=[HostSpec||HostSpec<-WantedState_Controllers,
 				 false==kube:is_controller_started(HostSpec)],
     StartControllers=[{kube:start_controller(HostSpec),HostSpec}||HostSpec<-MissingControlles],
-    io:format("StartControllers ~p~n",[{StartControllers,?MODULE,?FUNCTION_NAME,?LINE}]),
+  %  io:format("StartControllers ~p~n",[{StartControllers,?MODULE,?FUNCTION_NAME,?LINE}]),
 
     %% check and try to start missing providers
     io:format("check and try to start missing providers ~p~n",[{?MODULE,?FUNCTION_NAME,?LINE}]),
     {ok,WantedState}=kube:wanted_state_from_file(?File),
-    StartMissingProviders=[start_missing(ProviderSpec,HostSpec)||{ProviderSpec,HostSpec,_App}<-lists:sort(WantedState)],
-    io:format("StartMissingProviders ~p~n",[{StartMissingProviders,?MODULE,?FUNCTION_NAME,?LINE}]),
+    StartMissingProviders=start_missing(lists:sort(WantedState),[]),
+ %  io:format("StartMissingProviders ~p~n",[{StartMissingProviders,?MODULE,?FUNCTION_NAME,?LINE}]),
     {StartControllers,StartMissingProviders}.
     
 %%--------------------------------------------------------------------
@@ -135,7 +153,8 @@ sim_orch()->
      {"test_appl","c200",test_appl},{"test_appl","c201",test_appl}
     ]=[{ProviderSpec,HostSpec,App}||{ProviderSpec,HostSpec,App}<-lists:sort(WantedState),
 					   pong=/=sd:call(App,App,ping,[],5000)],
-    StartMissingProviders=[start_missing(ProviderSpec,HostSpec)||{ProviderSpec,HostSpec,_App}<-lists:sort(WantedState)],
+    StartMissingProviders=start_missing(lists:sort(WantedState),[]),
+
     []=[{ProviderSpec,HostSpec,App}||{ProviderSpec,HostSpec,App}<-lists:sort(WantedState),
 				      pong=/=sd:call(App,App,ping,[],5000)],
     [{ok,"adder","c200"},{ok,"divi","c200"},{ok,"divi","c201"},{ok,"test_appl","c200"},{ok,"test_appl","c201"}]=StartMissingProviders,
@@ -143,23 +162,27 @@ sim_orch()->
     
      ok.
 
-start_missing(ProviderSpec,HostSpec)->
-     Loaded=kube:is_provider_loaded(ProviderSpec,HostSpec),
+
+start_missing([],Acc)->
+    Acc;
+start_missing([{ProviderSpec,HostSpec,_App}|T],Acc)->
+    Loaded=kube:is_provider_loaded(ProviderSpec,HostSpec),
     Started=kube:is_provider_started(ProviderSpec,HostSpec),
-    Result=case {Loaded,Started} of
+    NewAcc=case {Loaded,Started} of
 	       {false,_}->
 		   case kube:load_provider(ProviderSpec,HostSpec) of
 		       {ok,ProviderSpec,HostSpec,_ProviderNode,ProviderApp}->
-			   {kube:start_provider(ProviderSpec,HostSpec),ProviderSpec,HostSpec};
+			   [{kube:start_provider(ProviderSpec,HostSpec),ProviderSpec,HostSpec}|Acc];
 		       {error,Reason}->
-			   {error,[ProviderSpec,HostSpec,Reason,?MODULE,?LINE]}
+			   [{error,[ProviderSpec,HostSpec,Reason,?MODULE,?LINE]}|Acc]
 		   end;
 	       {true,false}->
-		   {kube:start_provider(ProviderSpec,HostSpec),ProviderSpec,HostSpec};
+		   [{kube:start_provider(ProviderSpec,HostSpec),ProviderSpec,HostSpec}|Acc];
 	       {true,true}->
-		   ok
+		   Acc
 	   end,
-    Result.
+    start_missing(T,NewAcc).
+    
 		     
 		       
 		   
